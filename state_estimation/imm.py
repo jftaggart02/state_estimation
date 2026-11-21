@@ -28,23 +28,89 @@ def compute_mixing_probabilities(
     Returns:
         Vec: Mixing probabilities for each model (r x r matrix). Row idx = prev model, col idx = current model.
     """
+    # Input validation
+    r = previous_model_probs.shape[0]
+    if mode_transition_probs.shape != (r, r):
+        raise ValueError(f"Invalid shape for mode transition probability matrix! Got {mode_transition_probs.shape}, expected ({r, r})")
 
-def compute_mixed_initial_conditions(
-    previous_state_estimates: Vec,
-    previous_covariances: Vec,
+    # Compute normalization constants
+    normalization_consts = np.zeros(r)
+    for j in range(r):  # Current model idx
+        normalization_consts[j] = np.dot(previous_model_probs, mode_transition_probs[:, j])
+
+    # Compute mixing probabilities
+    mixing_probs = np.zeros((r, r))
+    for i in range(r):  # Previous model idx
+        for j in range(r):  # Current model idx
+            mixing_probs[i, j] = mode_transition_probs[i, j] * previous_model_probs[i]
+
+    return mixing_probs
+
+
+def compute_mixed_initial_states(
+    initial_states: Vec,
     mixing_probs: Vec,
-) -> tuple[Vec, Vec]:
-    """Compute the mixed initial conditions for each model.
+) -> Vec:
+    """Compute the mixed initial state for each model.
 
     Args:
-        previous_state_estimates (Vec): Previous state estimates (n x r matrix)
-        previous_covariances (Vec): Previous state estimate covariance matrices (n x n x r matrix)
+        initial_states (Vec): Previous state estimates (n x r matrix)
         mixing_probs (Vec): Mixing probabilities (r x r matrix)
     
     Returns:
-        mixed_state_estimates (Vec): Mixed state estimates (n x r matrix)
-        mixed_covariances (Vec): Mixed state estimate covariance matrices (n x n x r matrix)
+        mixed_initial_states (Vec): Mixed initial state (n x r matrix)
     """
+    # Input validation
+    (n, r) = initial_states.shape
+    if mixing_probs.shape != (r, r):
+        raise ValueError(f"Invalid shape for mixing probabilities! Got {mixing_probs.shape}, expected ({r, r})")
+
+    # Computed mixed initial states
+    mixed_initial_states = np.zeros((n, r))
+    for j in range(r):  # Current model
+        sum = np.zeros(n)
+        for i in range(r):  # Previous model
+            sum += initial_states[:, i] * mixing_probs[i, j]
+        mixed_initial_states[:, j] = sum
+
+    return mixed_initial_states
+
+
+def compute_mixed_initial_covariances(
+    initial_states: Vec,
+    mixed_initial_states: Vec,
+    initial_covariances: Vec,
+    mixing_probs: Vec,
+) -> Vec:
+    """Compute the mixed initial covariances of each model.
+
+    Args:
+        initial_states (Vec): Previous state estimates (n x r matrix)
+        mixed_initial_states (Vec): Mixed initial states for each model (n x r matrix)
+        initial_covariances (Vec): Previous state estimate covariances (n x n x r matrix)
+        mixing_probs (Vec): Mixing probabilities (r x r matrix)
+    
+    Returns:
+        mixed_initial_covariances (Vec): Mixed initial covariance matrices (n x n x r matrix)
+    """
+    # Input validation
+    (n, r) = mixed_initial_states.shape
+    if initial_covariances.shape != (n, n, r):
+        raise ValueError(f"Invalid shape for initial covariances! Got {initial_covariances.shape}, expected ({n, n, r})")
+    if mixing_probs.shape != (r, r):
+        raise ValueError(f"Invalid shape for mixing probabilities! Got {mixing_probs.shape}, expected ({r, r})")
+
+    # Compute mixed initial covariances
+    mixed_initial_covariances = np.zeros((n, n, r))
+    for j in range(r):  # current model
+        sum = np.zeros((n, n))
+        for i in range(r):  # previous model
+            diff = initial_states[:, i] - mixed_initial_states[:, j]
+            sum += mixing_probs[i, j] * (initial_covariances[:, :, i] + np.outer(diff, diff))
+        mixed_initial_covariances[:, :, j] = sum
+
+    return mixed_initial_covariances
+
 
 def kalman_filter_update(
     state_transition_matrix: Vec,
