@@ -118,8 +118,8 @@ def kalman_filter_update(
     measurement_matrix: Vec,
     measurement_covariance: Vec,
     measurement: Vec,
-    state_estimate: Vec,
-    state_estimate_covariance: Vec,
+    initial_state: Vec,
+    initial_covariance: Vec,
 ) -> tuple[Vec, Vec, float]:
     """Perform a Kalman filter update for a single model.
 
@@ -129,12 +129,12 @@ def kalman_filter_update(
         measurement_matrix (Vec): Measurement matrix (m x n)
         measurement_covariance (Vec): Measurement noise covariance matrix (m x m)
         measurement (Vec): Measurement (m vector)
-        state_estimate (Vec): State estimate (n vector)
-        state_estimate_covariance (Vec): State estimate covariance (n x n matrix)
+        initial_state (Vec): Initial state (n vector)
+        initial_covariance (Vec): Initial covariance (n x n matrix)
 
     Returns:
-        state_estimate (Vec): The updated state estimate (n vector).
-        covariance (Vec): The updated state estimate covariance (n x n matrix).
+        updated_state (Vec): The updated state estimate (n vector).
+        updated_covariance (Vec): The updated state estimate covariance (n x n matrix).
         likelihood (float): The likelihood function value (scalar).
     """
 
