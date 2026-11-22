@@ -67,16 +67,16 @@ def compute_mixing_probabilities(
     r = previous_model_probs.shape[0]
     _validate_array_shape(mode_transition_probs, [r, r], "mode transition probability matrix")
 
-    # Compute normalization constants
-    normalization_consts = np.zeros(r)
+    # Compute normalization factors for each model
+    normalization_factors = np.zeros(r)
     for j in range(r):  # Current model idx
-        normalization_consts[j] = np.dot(previous_model_probs, mode_transition_probs[:, j])
+        normalization_factors[j] = np.dot(previous_model_probs, mode_transition_probs[:, j])
 
     # Compute mixing probabilities
     mixing_probs = np.zeros((r, r))
     for i in range(r):  # Previous model idx
         for j in range(r):  # Current model idx
-            mixing_probs[i, j] = mode_transition_probs[i, j] * previous_model_probs[i]
+            mixing_probs[i, j] = mode_transition_probs[i, j] * previous_model_probs[i] / normalization_factors[j]
 
     return mixing_probs
 
@@ -169,7 +169,7 @@ def kalman_filter_update(
     innovation = measurement - measurement_matrix @ predicted_state
     innovation_covariance = measurement_matrix @ predicted_covariance @ measurement_matrix.T + measurement_covariance
     kalman_gain = predicted_covariance @ measurement_matrix.T @ np.linalg.inv(innovation_covariance)
-    updated_state = predicted_state + kalman_gain * innovation
+    updated_state = predicted_state + kalman_gain @ innovation
     I = np.eye(n)
     updated_covariance = (
         (I - kalman_gain @ measurement_matrix) @ predicted_covariance @ (I - kalman_gain @ measurement_matrix).T
