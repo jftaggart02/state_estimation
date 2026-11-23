@@ -12,14 +12,13 @@ import numpy as np
 import numpy.typing as npt
 from scipy.stats import multivariate_normal
 
-
 Vec: TypeAlias = npt.NDArray[np.float64]
 
 
 @dataclass
 class ImmResult:
     """Dataclass to hold the results of the IMM update.
-    
+
     Attributes:
         states (Vec): State estimate for each model (n x r matrix)
         covariances (Vec): Covariance of the state estimate for each model (n x n x r matrix)
@@ -27,6 +26,7 @@ class ImmResult:
         combined_state (Vec): Combined state estimate (n vector)
         combined_covariance (Vec): Combined covariance (n x n matrix)
     """
+
     states: Vec
     covariances: Vec
     model_probabilities: Vec
@@ -54,12 +54,12 @@ def compute_mixing_probabilities(
     mode_transition_probs: Vec,
 ) -> Vec:
     """Compute the mixing probabilities.
-    
+
     Args:
         previous_model_probs (Vec): Previous model probabilities (r vector)
-        mode_transition_probs (Vec): Mode transition probability matrix (r x r matrix). Row idx = prev model, 
+        mode_transition_probs (Vec): Mode transition probability matrix (r x r matrix). Row idx = prev model,
             col idx = current model.
-    
+
     Returns:
         Vec: Mixing probabilities for each model (r x r matrix). Row idx = prev model, col idx = current model.
     """
@@ -98,7 +98,7 @@ def compute_mixed_initial_conditions(
         mixed_initial_covariances (Vec): Mixed initial covariance matrices (n x n x r matrix)
     """
     # Input validation
-    (n, r) = initial_states.shape
+    n, r = initial_states.shape
     _validate_array_shape(initial_covariances, [n, n, r], "initial covariances")
     _validate_array_shape(mixing_probs, [r, r], "mixing probabilities")
 
@@ -160,10 +160,7 @@ def kalman_filter_update(
 
     # State prediction
     predicted_state = state_transition_matrix @ initial_state
-    predicted_covariance = (
-        state_transition_matrix @ initial_covariance @ state_transition_matrix.T
-        + process_noise_covariance
-    )
+    predicted_covariance = state_transition_matrix @ initial_covariance @ state_transition_matrix.T + process_noise_covariance
 
     # Measurement update
     innovation = measurement - measurement_matrix @ predicted_state
@@ -171,10 +168,9 @@ def kalman_filter_update(
     kalman_gain = predicted_covariance @ measurement_matrix.T @ np.linalg.inv(innovation_covariance)
     updated_state = predicted_state + kalman_gain @ innovation
     I = np.eye(n)
-    updated_covariance = (
-        (I - kalman_gain @ measurement_matrix) @ predicted_covariance @ (I - kalman_gain @ measurement_matrix).T
-        + kalman_gain @ measurement_covariance @ kalman_gain.T
-    )
+    updated_covariance = (I - kalman_gain @ measurement_matrix) @ predicted_covariance @ (
+        I - kalman_gain @ measurement_matrix
+    ).T + kalman_gain @ measurement_covariance @ kalman_gain.T
 
     # Likelihood function value
     likelihood = multivariate_normal.pdf(innovation, mean=np.zeros(m), cov=innovation_covariance)
@@ -182,11 +178,7 @@ def kalman_filter_update(
     return updated_state, updated_covariance, likelihood
 
 
-def update_model_probabilities(
-    previous_model_probs: Vec,
-    mode_transition_probs: Vec,
-    likelihoods: Vec
-) -> Vec:
+def update_model_probabilities(previous_model_probs: Vec, mode_transition_probs: Vec, likelihoods: Vec) -> Vec:
     """Update the model probabilities based on the previous model probabilities, mode transition probabilities, and likelihoods.
 
     Args:
@@ -213,11 +205,7 @@ def update_model_probabilities(
     return next_model_probs
 
 
-def combine_state_estimates(
-    state_estimates: Vec,
-    covariances: Vec,
-    model_probs: Vec
-) -> tuple[Vec, Vec]:
+def combine_state_estimates(state_estimates: Vec, covariances: Vec, model_probs: Vec) -> tuple[Vec, Vec]:
     """Combine state estimates and covariances based on model probabilities.
 
     Args:
@@ -230,7 +218,7 @@ def combine_state_estimates(
         combined_covariance (Vec): Combined covariance (n x n matrix)
     """
     # Input validation
-    (n, r) = state_estimates.shape
+    n, r = state_estimates.shape
     _validate_array_shape(covariances, [n, n, r], "covariances")
     _validate_array_shape(model_probs, [r], "model probabilities")
 
@@ -271,7 +259,7 @@ def imm_update(
         process_noise_covariances (Vec): Process noise covariance matrices for all models (n x n x r)
         measurement_matrices (Vec): Measurement matrices for all models (m x n x r)
         measurement_covariances (Vec): Measurement noise covariances for all models (m x m x r)
-    
+
     Returns:
         result (ImmResult): A dataclass containing:
             - State estimate for each model (n x r matrix)
@@ -281,7 +269,7 @@ def imm_update(
             - Combined covariance (n x n matrix)
     """
     # Input validation
-    (n, r) = initial_states.shape
+    n, r = initial_states.shape
     (m,) = measurement.shape
     _validate_array_shape(initial_covariances, [n, n, r], "initial covariances")
     _validate_array_shape(mode_transition_probs, [r, r], "mode transition probabilities")
@@ -312,7 +300,7 @@ def imm_update(
             measurement_covariances[:, :, j],
             measurement,
             mixed_initial_states[:, j],
-            mixed_initial_covariances[:, :, j]
+            mixed_initial_covariances[:, :, j],
         )
 
     # Step 4: Update model probabilities
@@ -326,5 +314,5 @@ def imm_update(
         covariances=updated_covariances,
         model_probabilities=updated_model_probs,
         combined_state=combined_state,
-        combined_covariance=combined_covariance
+        combined_covariance=combined_covariance,
     )
